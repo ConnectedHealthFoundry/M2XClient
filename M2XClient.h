@@ -19,9 +19,11 @@ class M2XClient
               int port = DEFAULT_M2X_PORT);
 
     int connect(void);
+    int deleteValues(const char* deviceId, const char* streamName, const char* from, const char* end);
 
     template <class T>
     int updateStreamValue(const char* deviceId, const char* streamName, T value);
+
   private:
     Client* _client;
     const char* _key;
