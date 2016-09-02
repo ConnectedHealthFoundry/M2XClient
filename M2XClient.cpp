@@ -1,5 +1,8 @@
 #include "M2XClient.h"
 
+static const int E_OK = 0;
+static const int E_NOCONNECTION = -1;
+
 M2XClient::M2XClient(Client* client,
                     const char* key,
                     const char* host,
@@ -19,6 +22,12 @@ int M2XClient::connect(void)
   }
 
   return E_OK;
+}
+
+String M2XClient::getHttpCode(String resp)
+{
+  int periodIndex = resp.indexOf('.');
+  return resp.substring(periodIndex + 3, periodIndex + 6);
 }
 
 int M2XClient::deleteValues(const char* deviceId, const char* streamName, const char* from, const char* end)
@@ -41,26 +50,40 @@ int M2XClient::deleteValues(const char* deviceId, const char* streamName, const 
     "Content-Type: application/json\r\n" +
     "Content-Length: " + strBuff.length() + "\r\n\r\n" + strBuff;
 
-  _client->print(request);
-
   String response = "";
   String chunk = "";
   int limit = 0;
   int sendCount = 0;
 
-  do
+  if(_client->connected())
   {
-    if (_client->connected())
+    _client->print(request);
+
+    do
     {
-      chunk = _client->readStringUntil('\n');
-      response += chunk;
+      if (_client->connected())
+      {
+        chunk = _client->readStringUntil('\n');
+        response += chunk;
+      }
+      limit++;
+    } while (chunk.length() > 0 && limit < 100);
+  }
+  else
+  {
+    if(connect() == 0)
+    {
+      int retCode = deleteValues(deviceId, streamName, from, end);
+      if(retCode == 0)
+      {
+        return 0;
+      }
     }
-    limit++;
-  } while (chunk.length() > 0 && limit < 100);
+  }
 
   if (response.length() > 12)
   {
-    String responseCode = response.substring(9, 12);
+    String responseCode = getHttpCode(response);
     if(responseCode == "204")
     {
       return E_OK;
