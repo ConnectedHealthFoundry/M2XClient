@@ -92,3 +92,59 @@ int M2XClient::deleteValues(const char* deviceId, const char* streamName, const 
 
   return -1;
 }
+
+int M2XClient::updateDeviceLocation(const char* deviceId, double longitude, double latitude)
+{
+  DynamicJsonBuffer jsonBuffer;
+  JsonObject& root = jsonBuffer.createObject();
+  root["longitude"] = double_with_n_digits(longitude, 8);
+  root["latitude"] = double_with_n_digits(latitude, 8);
+
+  char buff[100];
+  root.printTo(buff, sizeof(buff));
+  String strBuff(buff);
+  strBuff += "\n";
+
+  String endpoint = "/v2/devices/" + (String)deviceId + "/location";
+
+  String request = "PUT " + endpoint + " HTTP/1.1\r\n" +
+    "X-M2X-KEY: " + _key + "\r\n" +
+    "Host: " + _host + "\r\n" +
+    "Content-Type: application/json\r\n" +
+    "Content-Length: " + strBuff.length() + "\r\n\r\n" + strBuff;
+
+  String response = "";
+  String chunk = "";
+  int limit = 0;
+  int sendCount = 0;
+
+  if(_client->connected())
+  {
+    _client->print(request);
+
+    do
+    {
+      if (_client->connected())
+      {
+        chunk = _client->readStringUntil('\n');
+        response += chunk;
+      }
+      limit++;
+    } while (chunk.length() > 0 && limit < 100);
+  }
+  else
+  {
+    return -1;
+  }
+
+  if (response.length() > 12)
+  {
+    String responseCode = getHttpCode(response);
+    if(responseCode == "202")
+    {
+      return E_OK;
+    }
+  }
+
+  return -1;
+}

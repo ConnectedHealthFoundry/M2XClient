@@ -20,6 +20,7 @@ class M2XClient
 
     template <class T>
     int updateStreamValue(const char* deviceId, const char* streamName, T value);
+    int updateDeviceLocation(const char* deviceId, double longitude, double latitude);
 
   private:
     Client* _client;
